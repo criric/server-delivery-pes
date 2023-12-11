@@ -184,25 +184,30 @@ app.get('/api/address', async (req, res) => {
   }
 });
 
+const fixedClientId = '12345678910'; // Substitua pelo CPF do cliente específico
 
 app.post('/api/address', async (req, res) => {
-  const { client_id, cep, street, number, complement } = req.body;
+  const { cep, street, number, complement } = req.body;
 
   try {
-    // Execute a lógica necessária para salvar os dados no banco de dados
-    // (por exemplo, usando o pool de conexões MySQL)
+    // Execute a lógica necessária para verificar se já existe um endereço para o cliente no banco de dados
+    const [existingRows] = await connection.query('SELECT * FROM ADDRESS WHERE client_id = ?', [fixedClientId]);
 
-    // Substitua o trecho abaixo pelo código específico para salvar os dados no banco de dados
-    const result = await connection.query(
-      'INSERT INTO ADDRESS (client_id, cep, street, number, complement) VALUES (?, ?, ?, ?, ?)',
-      [client_id, cep, street, number, complement]
-    );
+    if (existingRows.length === 1) {
+      // Se já existe um endereço, atualize os dados
+      await connection.query('UPDATE ADDRESS SET cep=?, street=?, number=?, complement=? WHERE client_id=?',
+        [cep, street, number, complement, fixedClientId]);
 
-    const newAddressId = result.insertId;
+      res.json({ message: 'Endereço atualizado com sucesso!' });
+    } else {
+      // Se não existe um endereço, crie um novo
+      await connection.query('INSERT INTO ADDRESS (client_id, cep, street, number, complement) VALUES (?, ?, ?, ?, ?)',
+        [fixedClientId, cep, street, number, complement]);
 
-    res.status(201).json({ id: newAddressId, message: 'Endereço adicionado com sucesso!' });
+      res.json({ message: 'Endereço cadastrado com sucesso!' });
+    }
   } catch (error) {
-    console.error('Erro ao adicionar endereço:', error);
+    console.error('Erro durante a requisição:', error);
     res.status(500).send('Erro interno do servidor');
   }
 });
