@@ -101,6 +101,112 @@ app.delete('/api/itens/:id', async (req, res) => {
   }
 });
 
+// Rota POST para adicionar um item ao carrinho
+app.post('/api/cart', async (req, res) => {
+  const { item_menu_id } = req.body;
+
+  try {
+    // Verificar se o usuário e o item do menu existem
+    const [itemRows] = await connection.query('SELECT * FROM ITEM_MENU WHERE id = ?', [item_menu_id]);
+
+    if ( itemRows.length !== 1) {
+      return res.status(404).send('Usuário ou item do menu não encontrado');
+    }
+
+    // Adicionar o item ao carrinho
+    const [result] = await connection.query(
+      'INSERT INTO CART (item_menu_id) VALUES (?)',
+      [item_menu_id]
+    );
+
+    const newItemCartId = result.insertId;
+
+    res.status(201).json({ id: newItemCartId, message: 'Item adicionado ao carrinho com sucesso!' });
+  } catch (error) {
+    console.error('Erro geral na rota /api/cart:', error);
+    console.error('Erro ao adicionar item ao carrinho:', error);
+    res.status(500).send('Erro interno do servidor');
+  }
+});
+
+// Rota GET para obter os itens do carrinho de um usuário
+app.get('/api/cart', async (req, res) => {
+  try {
+    // Obter todos os itens do carrinho
+    const [itemRows] = await connection.query(
+      'SELECT ITEM_MENU.* FROM ITEM_MENU ' +
+      'JOIN CART ON ITEM_MENU.id = CART.item_menu_id'
+    );
+
+    res.json(itemRows);
+  } catch (error) {
+    console.error('Erro ao obter os itens do carrinho:', error);
+    res.status(500).send('Erro interno do servidor');
+  }
+});
+
+app.delete('/api/cart/:item_menu_id', async (req, res) => {
+  const itemMenuId = req.params.item_menu_id;
+
+  try {
+    const [result] = await connection.query('DELETE FROM CART WHERE item_menu_id = ?', [itemMenuId]);
+
+    if (result.affectedRows === 1) {
+      res.json({ item_menu_id: itemMenuId, message: 'Item do carrinho excluído com sucesso!' });
+    } else {
+      res.status(404).send('Item do carrinho não encontrado');
+    }
+  } catch (error) {
+    console.error('Erro ao excluir o item do carrinho pelo ID:', error);
+    res.status(500).send('Erro interno do servidor');
+  }
+});
+
+// Rota GET para obter os endereços de um cliente
+app.get('/api/address', async (req, res) => {
+  const fixedClientId = '12345678910'; // Substitua pelo CPF do cliente específico
+
+  try {
+    // Execute a lógica necessária para obter o endereço do banco de dados
+    // (por exemplo, usando o pool de conexões MySQL)
+
+    // Substitua o trecho abaixo pelo código específico para obter os dados do banco de dados
+    const [rows] = await connection.query('SELECT * FROM ADDRESS WHERE client_id = ?', [fixedClientId]);
+
+    if (rows.length === 1) {
+      res.json(rows[0]);
+    } else {
+      res.status(404).send('Endereço não encontrado para o cliente específico');
+    }
+  } catch (error) {
+    console.error('Erro ao obter endereço:', error);
+    res.status(500).send('Erro interno do servidor');
+  }
+});
+
+
+app.post('/api/address', async (req, res) => {
+  const { client_id, cep, street, number, complement } = req.body;
+
+  try {
+    // Execute a lógica necessária para salvar os dados no banco de dados
+    // (por exemplo, usando o pool de conexões MySQL)
+
+    // Substitua o trecho abaixo pelo código específico para salvar os dados no banco de dados
+    const result = await connection.query(
+      'INSERT INTO ADDRESS (client_id, cep, street, number, complement) VALUES (?, ?, ?, ?, ?)',
+      [client_id, cep, street, number, complement]
+    );
+
+    const newAddressId = result.insertId;
+
+    res.status(201).json({ id: newAddressId, message: 'Endereço adicionado com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao adicionar endereço:', error);
+    res.status(500).send('Erro interno do servidor');
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Servidor está rodando em http://localhost:${port}`);
